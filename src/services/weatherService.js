@@ -1,6 +1,42 @@
 // AgroVision™ - Weather & Location Service for Real-Time Agro-Meteorological Advisory
 
 export const KNOWN_AGRO_LOCATIONS = {
+  "bhubaneswar, odisha": {
+    name: "Bhubaneswar / Khordha, Odisha",
+    state: "Odisha",
+    lat: 20.2961,
+    lon: 85.8245,
+    temp: 30,
+    humidity: 82,
+    rainfallForecast: "Scattered Coastal Showers",
+    season: "Kharif",
+    soilAffinity: "Coastal Alluvial & Red Loam",
+    weatherAlert: "Coastal humidity high. Delay foliar nitrogen spraying until rainfall clears.",
+  },
+  "cuttack, odisha": {
+    name: "Cuttack, Odisha",
+    state: "Odisha",
+    lat: 20.4625,
+    lon: 85.883,
+    temp: 30,
+    humidity: 80,
+    rainfallForecast: "Passing Showers (2 mm)",
+    season: "Kharif",
+    soilAffinity: "Mahanadi Deltaic Alluvium",
+    weatherAlert: "Favorable conditions for paddy transplantation and basal NPK application.",
+  },
+  "sambalpur, odisha": {
+    name: "Sambalpur / Hirakud, Odisha",
+    state: "Odisha",
+    lat: 21.4669,
+    lon: 83.9812,
+    temp: 31,
+    humidity: 74,
+    rainfallForecast: "Partly Cloudy",
+    season: "Kharif",
+    soilAffinity: "Red & Yellow Loam",
+    weatherAlert: "Optimal canal irrigation zone. Monitor paddy tillering stage for stem borer.",
+  },
   "bargarh, odisha": {
     name: "Bargarh / Barpali, Odisha",
     state: "Odisha",
@@ -8,22 +44,34 @@ export const KNOWN_AGRO_LOCATIONS = {
     lon: 83.62,
     temp: 29,
     humidity: 78,
-    rainfallForecast: "Moderate Rain Expected (12 mm)",
+    rainfallForecast: "Moderate Rain Expected (8 mm)",
     season: "Kharif",
     soilAffinity: "Red & Yellow Loam",
     weatherAlert: "High humidity (>75%) favors fungal blast in paddy. Ensure good field drainage.",
   },
-  "bhubaneswar, odisha": {
-    name: "Bhubaneswar / Khordha, Odisha",
+  "kalahandi, odisha": {
+    name: "Kalahandi / Bhawanipatna, Odisha",
     state: "Odisha",
-    lat: 20.27,
-    lon: 85.83,
+    lat: 19.9075,
+    lon: 83.1644,
     temp: 30,
-    humidity: 82,
-    rainfallForecast: "Scattered Coastal Showers",
+    humidity: 72,
+    rainfallForecast: "Clear to Partly Cloudy",
     season: "Kharif",
-    soilAffinity: "Coastal Alluvial & Red Loam",
-    weatherAlert: "Coastal humidity high. Delay foliar nitrogen spraying until rainfall clears.",
+    soilAffinity: "Red Sandy Loam & Black Soil",
+    weatherAlert: "Good soil moisture in cotton and pulse tracts. Apply balanced potash for drought resilience.",
+  },
+  "balasore, odisha": {
+    name: "Balasore / Baleshwar, Odisha",
+    state: "Odisha",
+    lat: 21.4934,
+    lon: 86.9135,
+    temp: 29,
+    humidity: 84,
+    rainfallForecast: "Coastal Showers (6 mm)",
+    season: "Kharif",
+    soilAffinity: "Coastal Alluvial Loam",
+    weatherAlert: "High maritime humidity. Scout for bacterial leaf blight in lowland paddy.",
   },
   "ludhiana, punjab": {
     name: "Ludhiana, Punjab",
@@ -145,6 +193,42 @@ export const KNOWN_AGRO_LOCATIONS = {
     soilAffinity: "Deltaic Alluvium",
     weatherAlert: "High rainfall risk. Ensure paddy field bunds and drain surplus standing water.",
   },
+  "patna, bihar": {
+    name: "Patna, Bihar",
+    state: "Bihar",
+    lat: 25.5941,
+    lon: 85.1376,
+    temp: 29,
+    humidity: 75,
+    rainfallForecast: "Partly Cloudy (2 mm)",
+    season: "Kharif",
+    soilAffinity: "Gangetic Alluvium",
+    weatherAlert: "Good soil moisture in rice-wheat belt. Apply zinc sulfate if deficiency symptoms appear.",
+  },
+  "ranchi, jharkhand": {
+    name: "Ranchi / Chota Nagpur, Jharkhand",
+    state: "Jharkhand",
+    lat: 23.3441,
+    lon: 85.3096,
+    temp: 27,
+    humidity: 70,
+    rainfallForecast: "Pleasant & Breezy",
+    season: "Kharif",
+    soilAffinity: "Red Lateritic Loam",
+    weatherAlert: "Acidic upland soils. Incorporate lime or dolomite before pulse and vegetable sowing.",
+  },
+  "raipur, chhattisgarh": {
+    name: "Raipur, Chhattisgarh",
+    state: "Chhattisgarh",
+    lat: 21.2514,
+    lon: 81.6296,
+    temp: 31,
+    humidity: 71,
+    rainfallForecast: "Scattered Clouds",
+    season: "Kharif",
+    soilAffinity: "Red & Yellow Loam (Matasi/Dorsa)",
+    weatherAlert: "Paddy bowl tract. Keep standing water at 3-5 cm during tillering phase.",
+  },
   "mandya, karnataka": {
     name: "Mandya / Cauvery Basin, Karnataka",
     state: "Karnataka",
@@ -183,30 +267,159 @@ export const KNOWN_AGRO_LOCATIONS = {
   },
 };
 
+const STORAGE_LOCATION_KEY = "agrovision_user_location";
+
 /**
- * Reverse Geocode Coordinates using fast API with offline nearest-district fallback
+ * Retrieve saved location from browser localStorage
+ */
+export function getSavedLocation() {
+  try {
+    const stored = localStorage.getItem(STORAGE_LOCATION_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && (parsed.locationName || parsed.name)) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Error reading saved location:", e);
+  }
+  return null;
+}
+
+/**
+ * Persist chosen or detected location to localStorage
+ */
+export function saveLocation(locationObj) {
+  try {
+    if (locationObj) {
+      localStorage.setItem(STORAGE_LOCATION_KEY, JSON.stringify(locationObj));
+    }
+  } catch (e) {
+    console.warn("Error saving location:", e);
+  }
+}
+
+/**
+ * Clear saved location
+ */
+export function clearSavedLocation() {
+  try {
+    localStorage.removeItem(STORAGE_LOCATION_KEY);
+  } catch (e) {}
+}
+
+/**
+ * Live search locations via Open-Meteo Geocoding API
+ */
+export async function searchLocations(query) {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const cleanQ = encodeURIComponent(query.trim());
+    const res = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${cleanQ}&count=8&language=en&format=json`,
+      { signal: AbortSignal.timeout(4500) }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.results)) {
+        return data.results.map((item) => {
+          const parts = [item.name];
+          if (item.admin2 && item.admin2 !== item.name) parts.push(item.admin2);
+          if (item.admin1 && item.admin1 !== item.admin2) parts.push(item.admin1);
+          if (item.country) parts.push(item.country);
+          const displayName = parts.join(", ");
+          return {
+            name: item.name,
+            admin1: item.admin1 || "",
+            admin2: item.admin2 || "",
+            country: item.country || "India",
+            latitude: item.latitude,
+            longitude: item.longitude,
+            displayName,
+          };
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("Location search error:", e);
+  }
+  return [];
+}
+
+/**
+ * Reverse Geocode Coordinates using OpenStreetMap Nominatim with granular address extraction
  */
 export async function reverseGeocode(lat, lon) {
+  if (lat == null || lon == null) return "Regional Agro-Zone";
+
+  // 1. Primary: OpenStreetMap Nominatim
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+      {
+        headers: { "User-Agent": "AgroVision-PrecisionAgriculture/1.0" },
+        signal: AbortSignal.timeout(4500),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.address) {
+        const addr = data.address;
+        const place =
+          addr.city ||
+          addr.town ||
+          addr.village ||
+          addr.suburb ||
+          addr.municipality ||
+          addr.county ||
+          addr.state_district ||
+          "";
+        const district = addr.state_district || addr.county || "";
+        const state = addr.state || "";
+
+        // Clean administrative suffixes
+        const cleanPlace = place
+          .replace(/\s+(Municipal Corporation|\(M\.Corp\.\)|Corporation|Municipality)$/i, "")
+          .trim();
+        const cleanDistrict = district
+          .replace(/\s+(District|Zilla|District Administration)$/i, "")
+          .trim();
+
+        if (cleanPlace && cleanDistrict && cleanPlace.toLowerCase() !== cleanDistrict.toLowerCase() && state) {
+          return `${cleanPlace}, ${cleanDistrict}, ${state}`;
+        } else if (cleanPlace && state) {
+          return `${cleanPlace}, ${state}`;
+        } else if (cleanDistrict && state) {
+          return `${cleanDistrict}, ${state}`;
+        } else if (state) {
+          return `${state}, India`;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Nominatim reverse geocode error:", e);
+  }
+
+  // 2. Secondary: BigDataCloud fallback
   try {
     const res = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
-      { signal: AbortSignal.timeout(3500) }
+      { signal: AbortSignal.timeout(3000) }
     );
     if (res.ok) {
       const data = await res.json();
       const locality = data.locality || data.city || data.principalSubdivision;
       const state = data.principalSubdivision;
-      if (locality && state && locality !== state) {
+      if (locality && state) {
         return `${locality}, ${state}`;
-      } else if (state) {
-        return `${state}, ${data.countryName || "India"}`;
       }
     }
   } catch (e) {
-    // network or timeout, continue to nearest agro-hub
+    // network or timeout
   }
 
-  // Nearest neighbor fallback
+  // 3. Fallback: Closest known agro hub
   return getNearestAgroHub(lat, lon);
 }
 
@@ -385,71 +598,178 @@ export async function fetchAgroWeather(locationQuery = "Ludhiana, Punjab", lat =
 }
 
 /**
- * Automatically detect user's present location via Browser GPS or IP fallback
+ * Detect location specifically using High-Accuracy Browser GPS
  */
-export async function detectPresentLocation() {
-  // 1. Try Native Geolocation API (High accuracy GPS)
-  if (typeof navigator !== "undefined" && navigator.geolocation) {
-    try {
-      const position = await new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          timeout: 6000,
-          maximumAge: 120000,
-          enableHighAccuracy: true,
-        });
-      });
-
-      const { latitude, longitude } = position.coords;
-      const locationName = await reverseGeocode(latitude, longitude);
-      const weather = await fetchAgroWeather(locationName, latitude, longitude);
-
-      return {
-        success: true,
-        method: "GPS",
-        latitude,
-        longitude,
-        locationName,
-        weather,
-      };
-    } catch (gpsError) {
-      console.info("GPS detection skipped or denied, attempting IP location...", gpsError.message || gpsError);
-    }
+export async function detectLocationByGps() {
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    throw new Error("Geolocation is not supported by your browser");
   }
 
-  // 2. IP Location Fallback
+  const position = await new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 10000,
+      maximumAge: 30000,
+      enableHighAccuracy: true,
+    });
+  });
+
+  const { latitude, longitude, accuracy } = position.coords;
+  const locationName = await reverseGeocode(latitude, longitude);
+  const weather = await fetchAgroWeather(locationName, latitude, longitude);
+
+  const result = {
+    success: true,
+    method: "GPS",
+    latitude,
+    longitude,
+    accuracy: Math.round(accuracy || 0),
+    locationName,
+    weather,
+  };
+
+  saveLocation({
+    name: locationName,
+    lat: latitude,
+    lon: longitude,
+    method: "GPS",
+  });
+
+  return result;
+}
+
+/**
+ * Detect location specifically via Network / IP Geolocation
+ */
+export async function detectLocationByIp() {
+  // 1. Primary: GeoJS API (Fast, no strict rate limits in India)
   try {
-    const ipRes = await fetch("https://freeipapi.com/api/json", { signal: AbortSignal.timeout(3500) });
+    const ipRes = await fetch("https://get.geojs.io/v1/ip/geo.json", {
+      signal: AbortSignal.timeout(4500),
+    });
     if (ipRes.ok) {
       const ipData = await ipRes.json();
       if (ipData && ipData.latitude && ipData.longitude) {
-        const cityName = ipData.cityName || ipData.regionName || "Your Region";
-        const regionName = ipData.regionName || ipData.countryName || "";
-        const locationName = regionName ? `${cityName}, ${regionName}` : cityName;
-        const weather = await fetchAgroWeather(locationName, ipData.latitude, ipData.longitude);
+        const rawCity = ipData.city || "";
+        // Remove diacritics / accent marks (e.g. Kalāhandi -> Kalahandi)
+        const cleanCity = rawCity.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const region = ipData.region || "Odisha";
+        const lat = parseFloat(ipData.latitude);
+        const lon = parseFloat(ipData.longitude);
+        const locationName = cleanCity ? `${cleanCity}, ${region}` : `${region}, India`;
+        const weather = await fetchAgroWeather(locationName, lat, lon);
 
-        return {
+        const result = {
           success: true,
           method: "IP",
-          latitude: ipData.latitude,
-          longitude: ipData.longitude,
+          latitude: lat,
+          longitude: lon,
           locationName,
           weather,
         };
+
+        saveLocation({
+          name: locationName,
+          lat,
+          lon,
+          method: "IP",
+        });
+
+        return result;
       }
     }
-  } catch (ipErr) {
-    console.info("IP fallback unavailable, using regional agro center.");
+  } catch (err) {
+    console.warn("GeoJS IP location fetch error:", err);
   }
 
-  // 3. Graceful Default Preset (Hirakud / Bargarh Agro Basin)
-  const defaultPreset = KNOWN_AGRO_LOCATIONS["bargarh, odisha"];
+  // 2. Secondary IP Fallback: ipapi.co
+  try {
+    const res = await fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3500) });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.latitude && data.longitude) {
+        const cityName = data.city || data.region || "Regional Center";
+        const regionName = data.region || data.country_name || "";
+        const locationName = `${cityName}, ${regionName}`;
+        const weather = await fetchAgroWeather(locationName, data.latitude, data.longitude);
+
+        const result = {
+          success: true,
+          method: "IP",
+          latitude: data.latitude,
+          longitude: data.longitude,
+          locationName,
+          weather,
+        };
+
+        saveLocation({
+          name: locationName,
+          lat: data.latitude,
+          lon: data.longitude,
+          method: "IP",
+        });
+
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn("ipapi.co fallback error:", err);
+  }
+
+  throw new Error("Unable to determine location via network IP");
+}
+
+/**
+ * Automatically detect user's present location via:
+ * 1. Saved Preference in localStorage (if exists)
+ * 2. High-accuracy Browser GPS
+ * 3. IP Network Geolocation
+ * 4. Regional Agro Center Default
+ */
+export async function detectPresentLocation(forceFresh = false) {
+  // Check if user previously selected or saved a custom location
+  if (!forceFresh) {
+    const saved = getSavedLocation();
+    if (saved && saved.name) {
+      try {
+        const weather = await fetchAgroWeather(saved.name, saved.lat, saved.lon);
+        return {
+          success: true,
+          method: saved.method || "SAVED",
+          latitude: saved.lat || weather.lat,
+          longitude: saved.lon || weather.lon,
+          locationName: saved.name,
+          weather,
+        };
+      } catch (e) {
+        console.warn("Error fetching weather for saved location:", e);
+      }
+    }
+  }
+
+  // 1. Try High-accuracy Browser GPS
+  try {
+    return await detectLocationByGps();
+  } catch (gpsError) {
+    console.info("GPS detection skipped or denied, attempting IP location...", gpsError.message || gpsError);
+  }
+
+  // 2. Try IP Geolocation
+  try {
+    return await detectLocationByIp();
+  } catch (ipError) {
+    console.info("IP detection failed, using regional agricultural center default:", ipError.message || ipError);
+  }
+
+  // 3. Fallback: Regional agricultural center
+  const defaultPreset = KNOWN_AGRO_LOCATIONS["bhubaneswar, odisha"] || KNOWN_AGRO_LOCATIONS["bargarh, odisha"];
+  const weather = await fetchAgroWeather(defaultPreset.name, defaultPreset.lat, defaultPreset.lon);
   return {
     success: false,
-    method: "DEFAULT",
+    method: "FALLBACK",
     latitude: defaultPreset.lat,
     longitude: defaultPreset.lon,
     locationName: defaultPreset.name,
-    weather: defaultPreset,
+    weather,
   };
 }
 

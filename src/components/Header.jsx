@@ -1,5 +1,5 @@
 import React from "react";
-import { Sprout, Sun, Moon, CloudRain, Volume2, Award, Globe, Mic } from "lucide-react";
+import { Sprout, Sun, Moon, CloudRain, Volume2, Award, Globe, Mic, MapPin, RefreshCw } from "lucide-react";
 import { LANGUAGES } from "../data/translations";
 
 export default function Header({
@@ -16,6 +16,7 @@ export default function Header({
   onDetectLocation,
   isLocating,
   locationMethod,
+  onOpenLocationModal,
 }) {
   return (
     <header className="app-header">
@@ -32,36 +33,59 @@ export default function Header({
         </div>
       </div>
 
-      {/* Center Live Weather / Agro-Ecological Condition */}
-      <button
-        type="button"
-        className="weather-badge"
-        onClick={onDetectLocation}
-        title="Click to re-detect your present GPS location and refresh local weather"
-        style={{
-          cursor: "pointer",
-          border: isLocating ? "1px solid var(--accent-amber)" : "1px solid rgba(16, 185, 129, 0.3)",
-          background: isLocating ? "rgba(245, 158, 11, 0.1)" : "rgba(16, 185, 129, 0.08)",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "0.45rem",
-          transition: "all 0.2s ease",
-        }}
-      >
-        <CloudRain size={16} color={isLocating ? "var(--accent-amber)" : "var(--accent-emerald)"} className={isLocating ? "animate-spin" : ""} />
-        <span>
-          {isLocating
-            ? "Detecting your present location..."
-            : weatherData
-            ? `${weatherData.name} • ${weatherData.temp}°C • RH ${weatherData.humidity}% (${weatherData.season || "Agro-Zone"})`
-            : "Live Weather Sensor • Connecting..."}
-        </span>
-        {locationMethod === "GPS" && (
-          <span style={{ fontSize: "0.68rem", background: "#10b981", color: "#064e3b", padding: "1px 6px", borderRadius: "999px", fontWeight: "800" }}>
-            GPS
+      {/* Center Live Weather / Agro-Ecological Condition & Location Selector */}
+      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}>
+        <button
+          type="button"
+          className="weather-badge"
+          onClick={onOpenLocationModal || onDetectLocation}
+          title="Click to view, search, or change your exact farm location"
+          style={{
+            cursor: "pointer",
+            border: isLocating ? "1px solid var(--accent-amber)" : "1px solid rgba(16, 185, 129, 0.35)",
+            background: isLocating ? "rgba(245, 158, 11, 0.12)" : "rgba(16, 185, 129, 0.08)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.45rem",
+            transition: "all 0.2s ease",
+            padding: "0.4rem 0.85rem",
+          }}
+        >
+          <MapPin size={15} color={isLocating ? "var(--accent-amber)" : "var(--accent-emerald)"} className={isLocating ? "animate-spin" : ""} />
+          <span style={{ fontWeight: "600" }}>
+            {isLocating
+              ? "Detecting your location..."
+              : weatherData
+              ? `${weatherData.name} • ${weatherData.temp}°C (${weatherData.season || "Agro-Zone"})`
+              : "Live Weather Sensor • Connecting..."}
           </span>
-        )}
-      </button>
+          {locationMethod === "GPS" && (
+            <span style={{ fontSize: "0.65rem", background: "#10b981", color: "#064e3b", padding: "1px 6px", borderRadius: "999px", fontWeight: "800" }}>
+              GPS
+            </span>
+          )}
+          {locationMethod === "IP" && (
+            <span style={{ fontSize: "0.65rem", background: "rgba(6, 182, 212, 0.2)", color: "#38bdf8", padding: "1px 6px", borderRadius: "999px", fontWeight: "800" }}>
+              IP
+            </span>
+          )}
+          <span style={{ fontSize: "0.72rem", color: "var(--accent-emerald)", textDecoration: "underline", marginLeft: "2px" }}>
+            Change
+          </span>
+        </button>
+
+        {/* Quick GPS Re-probe Button */}
+        <button
+          type="button"
+          onClick={onDetectLocation}
+          title="Quick GPS Re-probe"
+          disabled={isLocating}
+          className="btn-icon"
+          style={{ width: "32px", height: "32px", borderRadius: "var(--radius-full)" }}
+        >
+          <RefreshCw size={13} className={isLocating ? "animate-spin" : ""} />
+        </button>
+      </div>
 
       {/* Controls & Actions */}
       <div className="header-controls">

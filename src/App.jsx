@@ -8,6 +8,7 @@ import FertilizerAdvisory from "./components/FertilizerAdvisory";
 import CropRecommender from "./components/CropRecommender";
 import PestDiseaseDetector from "./components/PestDiseaseDetector";
 import SoilHealthCardModal from "./components/SoilHealthCardModal";
+import LocationModal from "./components/LocationModal";
 
 import { SAMPLE_SOIL_REPORTS } from "./data/sampleReports";
 import { CROPS_DATABASE } from "./data/cropsData";
@@ -15,7 +16,7 @@ import { TRANSLATIONS } from "./data/translations";
 import { calculateFertilizerPrescription } from "./services/agronomyEngine";
 import { convertLandArea } from "./services/areaConverter";
 import { SpeechService } from "./services/speechService";
-import { fetchAgroWeather, detectPresentLocation } from "./services/weatherService";
+import { fetchAgroWeather, detectPresentLocation, getSavedLocation, saveLocation } from "./services/weatherService";
 
 export default function App() {
   // Main State
@@ -24,22 +25,24 @@ export default function App() {
   const [currentStep, setCurrentStep] = useState(1); // 1: Soil Upload, 2: Farm/Crop/Area/Weather Setup, 3: Fertilizer Advisory, 4: Crop Recommender, 5: Pest Vision
   const [showVoiceWidget, setShowVoiceWidget] = useState(true);
   const [showSoilCardModal, setShowSoilCardModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Soil Report Data (Default to Hirakud Basin / Bargarh Odisha)
+  // Soil Report Data
   const defaultReport = SAMPLE_SOIL_REPORTS[0];
   const [selectedReportId, setSelectedReportId] = useState(defaultReport.id);
   const [soilParams, setSoilParams] = useState(defaultReport.parameters);
   const [soilType, setSoilType] = useState(defaultReport.soilType);
 
-  // Farm Setup State
+  // Farm Setup State & Saved Location
+  const savedLoc = getSavedLocation();
   const [selectedCropId, setSelectedCropId] = useState("rice");
   const [areaValue, setAreaValue] = useState(3.0);
   const [areaUnitId, setAreaUnitId] = useState("acres"); // acres, hectares, sqft, bigha, guntha
-  const [locationQuery, setLocationQuery] = useState("Barpali, Bargarh, Odisha");
+  const [locationQuery, setLocationQuery] = useState(savedLoc ? savedLoc.name : "Locating your farm...");
   const [weatherData, setWeatherData] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [locationMethod, setLocationMethod] = useState(null);
+  const [locationMethod, setLocationMethod] = useState(savedLoc ? (savedLoc.method || "SAVED") : null);
 
   // Translations & Prescriptions
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
@@ -60,19 +63,26 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Update location handler when chosen via modal or detected
+  const handleSelectLocation = (res) => {
+    if (res && res.weather) {
+      setWeatherData(res.weather);
+      setLocationQuery(res.locationName || res.weather.name);
+      setLocationMethod(res.method || "MANUAL");
+      // Automatically adapt regional soil texture if report is default or custom
+      if (res.weather.soilAffinity && (selectedReportId === "odisha_bargarh" || selectedReportId === "custom_upload")) {
+        setSoilType(res.weather.soilAffinity);
+      }
+    }
+  };
+
   // Auto-detect user's present location & live weather on startup
-  const handleAutoDetectLocation = async () => {
+  const handleAutoDetectLocation = async (forceFresh = false) => {
     setIsLocating(true);
     try {
-      const res = await detectPresentLocation();
+      const res = await detectPresentLocation(forceFresh);
       if (res && res.weather) {
-        setWeatherData(res.weather);
-        setLocationQuery(res.locationName);
-        setLocationMethod(res.method);
-        // Automatically adapt regional soil texture if report is default or custom
-        if (res.weather.soilAffinity && (selectedReportId === "odisha_bargarh" || selectedReportId === "custom_upload")) {
-          setSoilType(res.weather.soilAffinity);
-        }
+        handleSelectLocation(res);
       }
     } catch (e) {
       console.warn("Auto-detect location error:", e);
@@ -104,9 +114,10 @@ export default function App() {
         isSpeaking={isSpeaking}
         onStopVoice={handleStopVoice}
         weatherData={weatherData}
-        onDetectLocation={handleAutoDetectLocation}
+        onDetectLocation={() => handleAutoDetectLocation(true)}
         isLocating={isLocating}
         locationMethod={locationMethod}
+        onOpenLocationModal={() => setShowLocationModal(true)}
       />
 
       {/* 2. Voice Assistant Widget */}
@@ -200,7 +211,8 @@ export default function App() {
             locationQuery={locationQuery}
             isLocating={isLocating}
             locationMethod={locationMethod}
-            onDetectLocation={handleAutoDetectLocation}
+            onDetectLocation={() => handleAutoDetectLocation(true)}
+            onOpenLocationModal={() => setShowLocationModal(true)}
             t={t}
           />
         )}
@@ -220,6 +232,7 @@ export default function App() {
             setWeatherData={setWeatherData}
             onProceedToAdvisory={() => setCurrentStep(3)}
             onBackToSoilUpload={() => setCurrentStep(1)}
+            onOpenLocationModal={() => setShowLocationModal(true)}
             t={t}
           />
         )}
@@ -277,6 +290,17 @@ export default function App() {
           t={t}
         />
       )}
+
+      {/* 6. Farm Location Selector & Live Search Modal */}
+      <LocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
+        currentLocationName={locationQuery}
+        currentWeather={weatherData}
+        currentMethod={locationMethod}
+        onLocationSelected={handleSelectLocation}
+        t={t}
+      />
 
       {/* Footer */}
       <footer

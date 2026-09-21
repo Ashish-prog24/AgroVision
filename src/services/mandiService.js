@@ -50,22 +50,48 @@ export const LIVE_MANDI_PRICES = {
 /**
  * Fetch live Mandi price for a crop in a given location
  */
-export async function fetchLiveMandiPrice(cropId, locationQuery = "Bargarh, Odisha") {
-  const locKey = Object.keys(LIVE_MANDI_PRICES).find(
-    (k) => locationQuery.toLowerCase().includes(k.split(",")[0]) || k.includes(locationQuery.toLowerCase())
-  ) || "bargarh, odisha";
+export async function fetchLiveMandiPrice(cropId, locationQuery = "Bhubaneswar, Odisha") {
+  const queryLower = (locationQuery || "").toLowerCase();
 
-  const market = LIVE_MANDI_PRICES[locKey];
+  // Find direct match or state match
+  let matchedKey = Object.keys(LIVE_MANDI_PRICES).find(
+    (k) => queryLower.includes(k.split(",")[0].trim()) || k.includes(queryLower)
+  );
+
+  // State level matching if city isn't exact
+  if (!matchedKey) {
+    if (queryLower.includes("odisha") || queryLower.includes("orissa")) {
+      matchedKey = "bargarh, odisha";
+    } else if (queryLower.includes("punjab") || queryLower.includes("haryana") || queryLower.includes("delhi") || queryLower.includes("chandigarh") || queryLower.includes("uttar pradesh") || queryLower.includes("bihar")) {
+      matchedKey = "ludhiana, punjab";
+    } else if (queryLower.includes("maharashtra") || queryLower.includes("madhya pradesh") || queryLower.includes("gujarat") || queryLower.includes("rajasthan") || queryLower.includes("chhattisgarh")) {
+      matchedKey = "nagpur, maharashtra";
+    } else if (queryLower.includes("andhra") || queryLower.includes("telangana") || queryLower.includes("karnataka") || queryLower.includes("tamil nadu") || queryLower.includes("kerala")) {
+      matchedKey = "guntur, andhra pradesh";
+    } else {
+      matchedKey = "bargarh, odisha";
+    }
+  }
+
+  const market = LIVE_MANDI_PRICES[matchedKey];
   const priceData = market.prices[cropId] || {
-    min: 2200,
-    max: 2600,
-    modal: 2400,
+    min: 2250,
+    max: 2650,
+    modal: 2420,
     unit: "₹ / Quintal",
-    trend: "MSP Base Rate",
+    trend: "MSP Base Benchmark",
   };
 
+  // Extract clean district or city name from user locationQuery
+  const primaryName = locationQuery ? locationQuery.split(",")[0].trim() : "Regional";
+  const stateName = locationQuery && locationQuery.includes(",") ? locationQuery.split(",")[1].trim() : "";
+  const dynamicMandiName = stateName
+    ? `${primaryName} APMC Mandi, ${stateName}`
+    : `${primaryName} Agricultural Market`;
+
   return {
-    mandiName: market.mandi,
+    mandiName: dynamicMandiName,
+    benchmarkHub: market.mandi,
     lastUpdated: market.lastUpdated,
     cropId,
     modalPrice: priceData.modal,

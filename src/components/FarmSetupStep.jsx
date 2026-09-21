@@ -18,6 +18,7 @@ export default function FarmSetupStep({
   setWeatherData,
   onProceedToAdvisory,
   onBackToSoilUpload,
+  onOpenLocationModal,
   t,
 }) {
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
@@ -258,14 +259,14 @@ export default function FarmSetupStep({
               Enter district / city or auto-detect GPS to fetch real-time weather and agronomy alerts:
             </p>
 
-            <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1rem", flexWrap: "wrap" }}>
               <input
                 type="text"
                 value={locationQuery}
                 onChange={(e) => setLocationQuery(e.target.value)}
-                placeholder="e.g. Barpali, Bargarh, Odisha or Ludhiana"
+                placeholder="e.g. Bhubaneswar, Sambalpur, Kalahandi or Ludhiana"
                 style={{
-                  flex: 1,
+                  flex: "1 1 200px",
                   padding: "0.75rem 1rem",
                   background: "var(--bg-tertiary)",
                   border: "1px solid var(--border-card)",
@@ -275,6 +276,16 @@ export default function FarmSetupStep({
                   outline: "none",
                 }}
               />
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onOpenLocationModal}
+                title="Search city or detect GPS"
+                style={{ padding: "0.75rem 0.95rem", fontSize: "0.85rem", whiteSpace: "nowrap" }}
+              >
+                <MapPin size={15} />
+                <span>Search / Change</span>
+              </button>
               <button
                 type="button"
                 className="btn btn-secondary"

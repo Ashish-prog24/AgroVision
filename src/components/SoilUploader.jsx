@@ -19,6 +19,7 @@ export default function SoilUploader({
   isLocating,
   locationMethod,
   onDetectLocation,
+  onOpenLocationModal,
   t,
 }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -227,22 +228,41 @@ export default function SoilUploader({
               </p>
             </div>
 
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onDetectLocation}
-              disabled={isLocating}
-              style={{
-                fontSize: "0.8rem",
-                padding: "0.45rem 0.9rem",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.45rem",
-              }}
-            >
-              <RefreshCw size={14} className={isLocating ? "animate-spin" : ""} />
-              <span>{isLocating ? "Detecting GPS..." : "Re-Detect Location"}</span>
-            </button>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onOpenLocationModal}
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.45rem 0.95rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                }}
+              >
+                <MapPin size={14} />
+                <span>Change Location / Search City</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onDetectLocation}
+                disabled={isLocating}
+                title="Re-probe GPS sensor"
+                style={{
+                  fontSize: "0.8rem",
+                  padding: "0.45rem 0.85rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.45rem",
+                }}
+              >
+                <RefreshCw size={14} className={isLocating ? "animate-spin" : ""} />
+                <span>{isLocating ? "Probing GPS..." : "Re-Detect GPS"}</span>
+              </button>
+            </div>
           </div>
 
           {/* Live Climate Metrics Strip */}
