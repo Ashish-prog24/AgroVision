@@ -7,6 +7,7 @@ export async function POST(request: Request) {
 
     let base64Data = ''
     let mimeType = 'image/jpeg'
+    let fileName = ''
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData()
@@ -17,19 +18,21 @@ export async function POST(request: Request) {
       }
 
       mimeType = file.type || 'image/jpeg'
+      fileName = file.name || ''
       const bytes = await file.arrayBuffer()
       base64Data = Buffer.from(bytes).toString('base64')
     } else {
-      const body = await request.json()
+      const body = await request.json().catch(() => ({}))
       base64Data = body.base64 || body.image || ''
       mimeType = body.mimeType || 'image/jpeg'
+      fileName = body.fileName || ''
     }
 
     if (!base64Data) {
       return NextResponse.json({ error: 'Empty file payload' }, { status: 400 })
     }
 
-    const extracted = await extractSoilReport(base64Data, mimeType)
+    const extracted = await extractSoilReport(base64Data, mimeType, fileName)
     return NextResponse.json({ success: true, data: extracted })
   } catch (error: any) {
     console.error('Soil extraction error:', error)

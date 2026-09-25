@@ -58,9 +58,13 @@ export function SoilDashboard({
             <span className="text-[11px] font-semibold text-emerald-300 uppercase tracking-wider block">
               Soil Health Card Summary
             </span>
-            <h3 className="text-base font-bold text-white">
-              Farmer: {farmerName || 'Ramesh Kumar'}
-              {district && `, ${district}, ${state || 'Odisha'}`}
+            <h3 className="text-base font-bold text-white flex items-center gap-2 flex-wrap">
+              <span>{farmerName ? farmerName : 'Farmer (Report Analyzed)'}</span>
+              {(district || state) && (
+                <span className="text-emerald-300 font-normal text-sm">
+                  ({[district, state].filter(Boolean).join(', ')})
+                </span>
+              )}
             </h3>
           </div>
 
