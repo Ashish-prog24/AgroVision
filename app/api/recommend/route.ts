@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { recommendCrops, RecommendationResult, CropRecord } from '@/lib/recommendation-engine'
+import {
+  recommendCrops,
+  RecommendationResult,
+  CropRecord,
+  WeatherSnapshot,
+  FarmInput,
+} from '@/lib/recommendation-engine'
+import { DEFAULT_CROPS } from '@/lib/crops-data'
 
 interface MLPrediction {
   crop: string
@@ -28,28 +35,52 @@ const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const { soil = {}, weather = {}, farm = {} } = body
 
-    const dbCrops = await prisma.crop.findMany()
+    const weatherSnapshot: WeatherSnapshot = {
+      temperature: Number(weather?.temperature ?? 26.0),
+      humidity: Number(weather?.humidity ?? 70.0),
+      precipitation: Number(weather?.precipitation ?? 4.0),
+    }
 
-    // 1. Attempt to get predictions from Python Random Forest ML Service
+    const farmInput: FarmInput = {
+      area: Number(farm?.area ?? 1.0),
+      areaUnit: String(farm?.areaUnit ?? 'acre'),
+      irrigationType: String(farm?.irrigationType ?? 'rainfed'),
+      season: String(farm?.season ?? 'kharif'),
+      preference: String(farm?.preference ?? 'any'),
+      farmingMethod: String(farm?.farmingMethod ?? 'integrated'),
+    }
+
+    // 1. Fetch crops from database or fallback to static catalogue
+    let dbCrops: CropRecord[] = []
+    try {
+      dbCrops = await prisma.crop.findMany()
+    } catch (dbErr) {
+      console.warn('Prisma database query failed, using static crop catalog fallback:', dbErr)
+    }
+
+    if (!dbCrops || dbCrops.length === 0) {
+      dbCrops = DEFAULT_CROPS
+    }
+
+    // 2. Attempt to get predictions from Python Random Forest ML Service
     let mlData: MLResponse | null = null
     try {
       const mlPayload = {
         N: Number(soil.nitrogen ?? 80),
         P: Number(soil.phosphorus ?? 45),
         K: Number(soil.potassium ?? 40),
-        temperature: Number(weather.temperature ?? 26.0),
-        humidity: Number(weather.humidity ?? 70.0),
+        temperature: weatherSnapshot.temperature,
+        humidity: weatherSnapshot.humidity,
         ph: Number(soil.ph ?? 6.5),
-        // Calculate estimated annual/seasonal rainfall from precipitation or default 160mm
-        rainfall: Number((weather.precipitation ?? 4) * 25 + 60),
+        rainfall: Number(weatherSnapshot.precipitation * 25 + 60),
         top_k: 6,
       }
 
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2000) // 2 sec timeout
+      const timeoutId = setTimeout(() => controller.abort(), 3500) // 3.5 sec timeout
 
       const mlRes = await fetch(`${ML_SERVICE_URL}/predict`, {
         method: 'POST',
@@ -68,12 +99,12 @@ export async function POST(request: Request) {
       mlData = null
     }
 
-    // 2. If ML service succeeded, enhance & prioritize with Random Forest model
+    // 3. If ML service succeeded, enhance & prioritize with Random Forest model
     if (mlData && mlData.predictions && mlData.predictions.length > 0) {
       const recommendations: RecommendationResult[] = []
 
       for (const pred of mlData.predictions) {
-        // Try to match with existing database crop
+        // Try to match with existing database/static crop
         const matchedDbCrop = dbCrops.find(
           (c) =>
             c.name.toLowerCase().includes(pred.crop.toLowerCase()) ||
@@ -121,7 +152,7 @@ export async function POST(request: Request) {
             pred.reasoning,
           ],
           warnings:
-            pred.water_requirement === 'High' && farm.irrigationType === 'rainfed'
+            pred.water_requirement === 'High' && farmInput.irrigationType === 'rainfed'
               ? ['High water requirement; ensure adequate monsoon moisture or supplementary irrigation.']
               : [],
           suitability,
@@ -137,8 +168,8 @@ export async function POST(request: Request) {
       })
     }
 
-    // 3. Fallback to built-in agronomic heuristic recommendation engine
-    const heuristicResults = recommendCrops(dbCrops, soil, weather, farm)
+    // 4. Fallback to built-in agronomic heuristic recommendation engine
+    const heuristicResults = recommendCrops(dbCrops, soil, weatherSnapshot, farmInput)
     return NextResponse.json({
       success: true,
       recommendations: heuristicResults,
@@ -147,9 +178,37 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Recommendation API error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to generate recommendations' },
-      { status: 500 }
-    )
+    // Always return fallback recommendations so frontend is never broken
+    try {
+      const emergencyWeather: WeatherSnapshot = {
+        temperature: 26.0,
+        humidity: 70.0,
+        precipitation: 4.0,
+      }
+      const emergencyFarm: FarmInput = {
+        area: 1.0,
+        areaUnit: 'acre',
+        irrigationType: 'rainfed',
+        season: 'kharif',
+        preference: 'any',
+      }
+      const fallbackResults = recommendCrops(
+        DEFAULT_CROPS,
+        {},
+        emergencyWeather,
+        emergencyFarm
+      )
+      return NextResponse.json({
+        success: true,
+        recommendations: fallbackResults,
+        engine: 'Built-in Agronomic Expert Engine (Emergency Fallback)',
+        mlActive: false,
+      })
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Failed to generate recommendations' },
+        { status: 500 }
+      )
+    }
   }
 }

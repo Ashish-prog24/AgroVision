@@ -23,8 +23,9 @@ import { WeatherWidget } from './WeatherWidget'
 import { CropCard } from './CropCard'
 import { FertilizerCalculator } from './FertilizerCalculator'
 import { WeatherData, getMockWeather, generateWeatherAlerts } from '@/lib/weather'
-import { RecommendationResult } from '@/lib/recommendation-engine'
-import { FertilizerPlan } from '@/lib/fertilizer-engine'
+import { RecommendationResult, recommendCrops } from '@/lib/recommendation-engine'
+import { FertilizerPlan, calculateFertilizerPlan } from '@/lib/fertilizer-engine'
+import { DEFAULT_CROPS } from '@/lib/crops-data'
 import { useLanguage } from '@/context/LanguageContext'
 
 export function StepWizard() {
@@ -334,33 +335,49 @@ export function StepWizard() {
   // Trigger Recommendations API
   const handleAnalyzeCrops = async () => {
     setLoading(true)
+    const weatherSnapshot = {
+      temperature: weather?.current?.temperature ?? 26.0,
+      humidity: weather?.current?.humidity ?? 70.0,
+      precipitation: weather?.current?.precipitation ?? 4.0,
+    }
+
     try {
       const res = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           soil,
-          weather: {
-            temperature: weather.current.temperature,
-            humidity: weather.current.humidity,
-            precipitation: weather.current.precipitation,
-          },
+          weather: weatherSnapshot,
           farm: farmData,
         }),
       })
 
       if (res.ok) {
         const data = await res.json()
-        if (data.success && data.recommendations) {
+        if (data.recommendations && data.recommendations.length > 0) {
           setRecommendations(data.recommendations)
-          if (data.recommendations.length > 0) {
-            handleSelectCrop(data.recommendations[0])
-          }
+          handleSelectCrop(data.recommendations[0])
           setCurrentStep(5)
+          return
         }
       }
+      
+      // Fallback if backend returned non-200 or empty list
+      console.warn('Backend API returned non-OK or empty, activating client-side agronomic engine')
+      const fallbackRecs = recommendCrops(DEFAULT_CROPS, soil, weatherSnapshot, farmData)
+      setRecommendations(fallbackRecs)
+      if (fallbackRecs.length > 0) {
+        handleSelectCrop(fallbackRecs[0])
+      }
+      setCurrentStep(5)
     } catch (e) {
-      console.error('Recommendation API error:', e)
+      console.error('Recommendation API error, activating client fallback:', e)
+      const fallbackRecs = recommendCrops(DEFAULT_CROPS, soil, weatherSnapshot, farmData)
+      setRecommendations(fallbackRecs)
+      if (fallbackRecs.length > 0) {
+        handleSelectCrop(fallbackRecs[0])
+      }
+      setCurrentStep(5)
     } finally {
       setLoading(false)
     }
@@ -390,10 +407,24 @@ export function StepWizard() {
         const data = await res.json()
         if (data.success && data.plan) {
           setFertilizerPlan(data.plan)
+          return
         }
       }
     } catch (e) {
-      console.error('Fertilizer calculation error:', e)
+      console.error('Fertilizer calculation error, falling back to local computation:', e)
+    }
+
+    // Direct local computation fallback so fertilizer plan is ALWAYS calculated
+    try {
+      const localPlan = calculateFertilizerPlan(
+        rec.crop.name,
+        Number(farmData.area),
+        farmData.areaUnit,
+        soil
+      )
+      setFertilizerPlan(localPlan)
+    } catch (calcErr) {
+      console.error('Local fertilizer calculation failed:', calcErr)
     }
   }
 
