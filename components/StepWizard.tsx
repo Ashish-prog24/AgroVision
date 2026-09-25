@@ -50,7 +50,7 @@ export function StepWizard() {
     ec: 0.45,
     organicCarbon: 0.54,
     nitrogen: 240,
-    phosphorus: 18.5,
+    phosphorus: 144,
     potassium: 195,
     sulphur: 12,
     zinc: 0.55,
@@ -252,7 +252,7 @@ export function StepWizard() {
     if (!file) return
 
     setLoading(true)
-    setUploadStatus('Scanning Soil Report with Gemini Vision OCR...')
+    setUploadStatus('Scanning Soil Report with AI OCR engine...')
 
     const reader = new FileReader()
     reader.onload = async () => {
@@ -272,7 +272,7 @@ export function StepWizard() {
             ec: d.ec ?? 0.45,
             organicCarbon: d.organicCarbon ?? 0.54,
             nitrogen: d.nitrogen ?? 240,
-            phosphorus: d.phosphorus ?? 18.5,
+            phosphorus: d.phosphorus ?? 144,
             potassium: d.potassium ?? 195,
             sulphur: d.sulphur ?? 12,
             zinc: d.zinc ?? 0.55,
@@ -289,11 +289,14 @@ export function StepWizard() {
               state: d.state || prev.state,
               testDate: d.testDate || prev.testDate,
             }))
-            setUploadStatus(`✓ Report analyzed! Farmer: ${d.farmerName}`)
+            setUploadStatus(`✓ Report analyzed! Farmer/Client: ${d.farmerName}`)
           } else {
+            const fallbackName = (!file.name.toLowerCase().includes('report') && !/^\d+$/.test(file.name.replace(/\.[^/.]+$/, '')))
+              ? file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ')
+              : 'Verified Farmer'
             setFarmerDetails((prev) => ({
               ...prev,
-              name: file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' '),
+              name: fallbackName,
               sampleNumber: d.sampleNumber || prev.sampleNumber,
               village: d.village || prev.village,
               district: d.district || prev.district,
